@@ -257,7 +257,17 @@ func (p *privxProvider) Configure(ctx context.Context, req provider.ConfigureReq
 
 	tflog.Debug(ctx, "Creating PrivX client")
 
-	connector, err := client.NewConnector(apiBaseURL, apiBearerToken, apiClientID, apiClientSecret, oauthClientID, oauthClientSecret)
+	// Use connection pool to avoid authentication race conditions
+	config := client.ConnectionConfig{
+		APIBaseURL:        apiBaseURL,
+		BearerToken:       apiBearerToken,
+		APIClientID:       apiClientID,
+		APIClientSecret:   apiClientSecret,
+		OAuthClientID:     oauthClientID,
+		OAuthClientSecret: oauthClientSecret,
+	}
+	
+	connector, err := client.GetConnector(config)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to create PrivX client",
