@@ -46,7 +46,7 @@ func GetConnector(config ConnectionConfig) (*restapi.Connector, error) {
 
 func (p *ConnectionPool) getOrCreateConnector() (*restapi.Connector, error) {
 	p.mu.RLock()
-	
+
 	// Return existing connector if it's recent (less than 5 minutes old)
 	if p.connector != nil && time.Since(p.lastAuth) < 5*time.Minute {
 		defer p.mu.RUnlock()
@@ -72,13 +72,13 @@ func (p *ConnectionPool) getOrCreateConnector() (*restapi.Connector, error) {
 		p.config.OAuthClientID,
 		p.config.OAuthClientSecret,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
 
 	p.connector = connector
 	p.lastAuth = time.Now()
-	
+
 	return connector, nil
 }

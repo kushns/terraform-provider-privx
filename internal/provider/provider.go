@@ -266,7 +266,7 @@ func (p *privxProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		OAuthClientID:     oauthClientID,
 		OAuthClientSecret: oauthClientSecret,
 	}
-	
+
 	connector, err := client.GetConnector(config)
 	if err != nil {
 		resp.Diagnostics.AddError(
