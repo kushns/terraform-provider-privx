@@ -979,7 +979,7 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 				"id":   types.StringValue(whitelistGrant.WhiteList.ID),
 				"name": types.StringValue(whitelistGrant.WhiteList.Name),
 			}
-			
+
 			// Convert roles for this whitelist
 			whitelistRoleValues := make([]attr.Value, len(whitelistGrant.Roles))
 			for k, role := range whitelistGrant.Roles {
@@ -992,7 +992,7 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 					"name": types.StringType,
 				}, roleAttrs)
 			}
-			
+
 			whitelistGrantAttrs := map[string]attr.Value{
 				"whitelist": types.ObjectValueMust(map[string]attr.Type{
 					"id":   types.StringType,
@@ -1005,7 +1005,7 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 					},
 				}, whitelistRoleValues),
 			}
-			
+
 			whitelistValues[j] = types.ObjectValueMust(map[string]attr.Type{
 				"whitelist": types.ObjectType{
 					AttrTypes: map[string]attr.Type{
@@ -1023,7 +1023,7 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 				},
 			}, whitelistGrantAttrs)
 		}
-		
+
 		commandRestrictionsAttrs["whitelists"] = types.ListValueMust(types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"whitelist": types.ObjectType{
@@ -1044,12 +1044,12 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 		}, whitelistValues)
 
 		commandRestrictionsValue := types.ObjectValueMust(map[string]attr.Type{
-			"enabled":            types.BoolType,
-			"rshell_variant":     types.StringType,
-			"allow_no_match":     types.BoolType,
-			"audit_match":        types.BoolType,
-			"audit_no_match":     types.BoolType,
-			"banner":             types.StringType,
+			"enabled":        types.BoolType,
+			"rshell_variant": types.StringType,
+			"allow_no_match": types.BoolType,
+			"audit_match":    types.BoolType,
+			"audit_no_match": types.BoolType,
+			"banner":         types.StringType,
 			"default_whitelist": types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"id":   types.StringType,
@@ -1138,12 +1138,12 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 			},
 			"command_restrictions": types.ObjectType{
 				AttrTypes: map[string]attr.Type{
-					"enabled":            types.BoolType,
-					"rshell_variant":     types.StringType,
-					"allow_no_match":     types.BoolType,
-					"audit_match":        types.BoolType,
-					"audit_no_match":     types.BoolType,
-					"banner":             types.StringType,
+					"enabled":        types.BoolType,
+					"rshell_variant": types.StringType,
+					"allow_no_match": types.BoolType,
+					"audit_match":    types.BoolType,
+					"audit_no_match": types.BoolType,
+					"banner":         types.StringType,
 					"default_whitelist": types.ObjectType{
 						AttrTypes: map[string]attr.Type{
 							"id":   types.StringType,
@@ -1234,12 +1234,12 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 			},
 			"command_restrictions": types.ObjectType{
 				AttrTypes: map[string]attr.Type{
-					"enabled":            types.BoolType,
-					"rshell_variant":     types.StringType,
-					"allow_no_match":     types.BoolType,
-					"audit_match":        types.BoolType,
-					"audit_no_match":     types.BoolType,
-					"banner":             types.StringType,
+					"enabled":        types.BoolType,
+					"rshell_variant": types.StringType,
+					"allow_no_match": types.BoolType,
+					"audit_match":    types.BoolType,
+					"audit_no_match": types.BoolType,
+					"banner":         types.StringType,
 					"default_whitelist": types.ObjectType{
 						AttrTypes: map[string]attr.Type{
 							"id":   types.StringType,

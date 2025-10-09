@@ -924,7 +924,7 @@ func (r *HostResource) Create(ctx context.Context, req resource.CreateRequest, r
 		if !pm.CommandRestrictions.IsNull() && !pm.CommandRestrictions.IsUnknown() {
 			var commandRestrictionsModel CommandRestrictionsModel
 			pm.CommandRestrictions.As(ctx, &commandRestrictionsModel, basetypes.ObjectAsOptions{})
-			
+
 			commandRestrictions := hoststore.HostCommandRestrictions{
 				Enabled:       commandRestrictionsModel.Enabled.ValueBool(),
 				RShellVariant: commandRestrictionsModel.RShellVariant.ValueString(),
@@ -948,10 +948,10 @@ func (r *HostResource) Create(ctx context.Context, req resource.CreateRequest, r
 			if !commandRestrictionsModel.Whitelists.IsNull() && !commandRestrictionsModel.Whitelists.IsUnknown() {
 				var whitelistGrantModels []WhitelistGrantModel
 				commandRestrictionsModel.Whitelists.ElementsAs(ctx, &whitelistGrantModels, false)
-				
+
 				for _, wgm := range whitelistGrantModels {
 					whitelistGrant := hoststore.WhiteListGrant{}
-					
+
 					// Convert whitelist handle
 					if !wgm.Whitelist.IsNull() && !wgm.Whitelist.IsUnknown() {
 						var whitelistHandleModel WhitelistHandleModel
@@ -961,12 +961,12 @@ func (r *HostResource) Create(ctx context.Context, req resource.CreateRequest, r
 							Name: whitelistHandleModel.Name.ValueString(),
 						}
 					}
-					
+
 					// Convert roles
 					if !wgm.Roles.IsNull() && !wgm.Roles.IsUnknown() {
 						var roleModels []RoleModel
 						wgm.Roles.ElementsAs(ctx, &roleModels, false)
-						
+
 						for _, rm := range roleModels {
 							role := hoststore.HostRole{
 								ID:   rm.ID.ValueString(),
@@ -975,7 +975,7 @@ func (r *HostResource) Create(ctx context.Context, req resource.CreateRequest, r
 							whitelistGrant.Roles = append(whitelistGrant.Roles, role)
 						}
 					}
-					
+
 					commandRestrictions.WhiteLists = append(commandRestrictions.WhiteLists, whitelistGrant)
 				}
 			}
@@ -1304,7 +1304,7 @@ func (r *HostResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		if !pm.CommandRestrictions.IsNull() && !pm.CommandRestrictions.IsUnknown() {
 			var commandRestrictionsModel CommandRestrictionsModel
 			pm.CommandRestrictions.As(ctx, &commandRestrictionsModel, basetypes.ObjectAsOptions{})
-			
+
 			commandRestrictions := hoststore.HostCommandRestrictions{
 				Enabled:       commandRestrictionsModel.Enabled.ValueBool(),
 				RShellVariant: commandRestrictionsModel.RShellVariant.ValueString(),
@@ -1328,10 +1328,10 @@ func (r *HostResource) Update(ctx context.Context, req resource.UpdateRequest, r
 			if !commandRestrictionsModel.Whitelists.IsNull() && !commandRestrictionsModel.Whitelists.IsUnknown() {
 				var whitelistGrantModels []WhitelistGrantModel
 				commandRestrictionsModel.Whitelists.ElementsAs(ctx, &whitelistGrantModels, false)
-				
+
 				for _, wgm := range whitelistGrantModels {
 					whitelistGrant := hoststore.WhiteListGrant{}
-					
+
 					// Convert whitelist handle
 					if !wgm.Whitelist.IsNull() && !wgm.Whitelist.IsUnknown() {
 						var whitelistHandleModel WhitelistHandleModel
@@ -1341,12 +1341,12 @@ func (r *HostResource) Update(ctx context.Context, req resource.UpdateRequest, r
 							Name: whitelistHandleModel.Name.ValueString(),
 						}
 					}
-					
+
 					// Convert roles
 					if !wgm.Roles.IsNull() && !wgm.Roles.IsUnknown() {
 						var roleModels []RoleModel
 						wgm.Roles.ElementsAs(ctx, &roleModels, false)
-						
+
 						for _, rm := range roleModels {
 							role := hoststore.HostRole{
 								ID:   rm.ID.ValueString(),
@@ -1355,7 +1355,7 @@ func (r *HostResource) Update(ctx context.Context, req resource.UpdateRequest, r
 							whitelistGrant.Roles = append(whitelistGrant.Roles, role)
 						}
 					}
-					
+
 					commandRestrictions.WhiteLists = append(commandRestrictions.WhiteLists, whitelistGrant)
 				}
 			}
@@ -1757,7 +1757,7 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 		// Convert command restrictions for this principal
 		var commandRestrictionsValue types.Object
 		commandRestrictionsAttrs := map[string]attr.Value{
-			"enabled":       types.BoolValue(principal.CommandRestrictions.Enabled),
+			"enabled":        types.BoolValue(principal.CommandRestrictions.Enabled),
 			"rshell_variant": types.StringValue(principal.CommandRestrictions.RShellVariant),
 			"allow_no_match": types.BoolValue(principal.CommandRestrictions.AllowNoMatch),
 			"audit_match":    types.BoolValue(principal.CommandRestrictions.AuditMatch),
@@ -1783,7 +1783,7 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 				"id":   types.StringValue(whitelistGrant.WhiteList.ID),
 				"name": types.StringValue(whitelistGrant.WhiteList.Name),
 			}
-			
+
 			// Convert roles for this whitelist
 			whitelistRoleValues := make([]attr.Value, len(whitelistGrant.Roles))
 			for k, role := range whitelistGrant.Roles {
@@ -1796,7 +1796,7 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 					"name": types.StringType,
 				}, roleAttrs)
 			}
-			
+
 			whitelistGrantAttrs := map[string]attr.Value{
 				"whitelist": types.ObjectValueMust(map[string]attr.Type{
 					"id":   types.StringType,
@@ -1809,7 +1809,7 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 					},
 				}, whitelistRoleValues),
 			}
-			
+
 			whitelistValues[j] = types.ObjectValueMust(map[string]attr.Type{
 				"whitelist": types.ObjectType{
 					AttrTypes: map[string]attr.Type{
@@ -1827,7 +1827,7 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 				},
 			}, whitelistGrantAttrs)
 		}
-		
+
 		commandRestrictionsAttrs["whitelists"] = types.ListValueMust(types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"whitelist": types.ObjectType{
@@ -1848,12 +1848,12 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 		}, whitelistValues)
 
 		commandRestrictionsValue = types.ObjectValueMust(map[string]attr.Type{
-			"enabled":            types.BoolType,
-			"rshell_variant":     types.StringType,
-			"allow_no_match":     types.BoolType,
-			"audit_match":        types.BoolType,
-			"audit_no_match":     types.BoolType,
-			"banner":             types.StringType,
+			"enabled":        types.BoolType,
+			"rshell_variant": types.StringType,
+			"allow_no_match": types.BoolType,
+			"audit_match":    types.BoolType,
+			"audit_no_match": types.BoolType,
+			"banner":         types.StringType,
 			"default_whitelist": types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"id":   types.StringType,
