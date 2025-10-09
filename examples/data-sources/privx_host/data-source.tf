@@ -29,6 +29,50 @@ output "host_principals" {
   value       = data.privx_host.by_name.principals
 }
 
+# Output service options for principals
+output "host_service_options" {
+  description = "Service options configured for principals"
+  value = [
+    for principal in data.privx_host.by_name.principals : {
+      principal_name  = principal.principal
+      service_options = principal.service_options
+    }
+  ]
+}
+
+# Output command restrictions for principals
+output "host_command_restrictions" {
+  description = "Command restrictions configured for principals"
+  value = [
+    for principal in data.privx_host.by_name.principals : {
+      principal_name       = principal.principal
+      command_restrictions = principal.command_restrictions
+    }
+  ]
+}
+
+# Output specific service option details
+output "ssh_service_options" {
+  description = "SSH service options for all principals"
+  value = [
+    for principal in data.privx_host.by_name.principals : {
+      principal = principal.principal
+      ssh_options = try(principal.service_options.ssh, null)
+    } if try(principal.service_options.ssh, null) != null
+  ]
+}
+
+# Output RDP service options if available
+output "rdp_service_options" {
+  description = "RDP service options for all principals"
+  value = [
+    for principal in data.privx_host.by_name.principals : {
+      principal = principal.principal
+      rdp_options = try(principal.service_options.rdp, null)
+    } if try(principal.service_options.rdp, null) != null
+  ]
+}
+
 # Output falcon host information for debugging
 output "falcon_host_id" {
   description = "ID of the Falcon host"

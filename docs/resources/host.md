@@ -64,6 +64,94 @@ resource "privx_host" "with_rotation" {
     disable_file_transfer_recording = false
   }
 }
+
+# Create a Windows RDP host with service options and command restrictions
+resource "privx_host" "windows_rdp" {
+  common_name     = "windows-server"
+  addresses       = ["192.168.1.200"]
+  source_id       = "a0ad72dc-b4aa-4a53-b7e0-14902b8b18bd"
+  access_group_id = "bfe74d8b-feda-46f1-7ac3-b37ef5b15e3b"
+
+  services {
+    service = "RDP"
+    address = "192.168.1.200"
+    port    = 3389
+    source  = "UI"
+  }
+
+  principals {
+    principal = "Administrator"
+    source    = "UI"
+    
+    roles {
+      id   = "windows-admin-role-id"
+      name = "Windows Admin"
+    }
+
+    # Configure service options for different protocols
+    service_options {
+      ssh {
+        shell         = true
+        file_transfer = true
+        exec          = true
+        tunnels       = false
+        x11           = false
+        other         = true
+      }
+      
+      rdp {
+        file_transfer = true
+        audio         = true
+        clipboard     = true
+      }
+      
+      web {
+        file_transfer = false
+        audio         = true
+        clipboard     = true
+      }
+      
+      vnc {
+        file_transfer = false
+        clipboard     = true
+      }
+      
+      db {
+        max_bytes_upload   = 1048576  # 1MB
+        max_bytes_download = 10485760 # 10MB
+      }
+    }
+
+    # Configure command restrictions
+    command_restrictions {
+      enabled         = true
+      rshell_variant  = "powershell"
+      allow_no_match  = false
+      audit_match     = true
+      audit_no_match  = true
+      banner          = "Authorized access only. All activities are monitored."
+      
+      default_whitelist {
+        id   = "11c24354-e280-4fb2-791b-9f5c80dd2b01"
+        name = "windows_basic_commands"
+      }
+      
+      whitelists {
+        whitelist {
+          id   = "7ea51435-59b9-4e6d-422d-4acec3173260"
+          name = "admin_commands"
+        }
+        
+        roles {
+          id   = "65127d0a-b2df-403c-be19-e2960d10de4d"
+          name = "privx-admin"
+        }
+      }
+    }
+  }
+
+  tags = ["windows", "production"]
+}
 ```
 
 ## Schema
@@ -119,13 +207,67 @@ resource "privx_host" "with_rotation" {
 #### Optional
 
 - `applications` (List of String) List of applications for the principal
+- `command_restrictions` (Block) Command restrictions for the principal (see [below for nested schema](#nestedblock--principals--command_restrictions))
 - `passphrase` (String) Principal passphrase (write-only, API returns masked value). Defaults to `""`.
 - `roles` (Block List) List of roles for the principal (see [below for nested schema](#nestedblock--principals--roles))
 - `rotate` (Boolean) Whether to rotate the principal. Defaults to `false`.
+- `service_options` (Block) Service options for the principal (see [below for nested schema](#nestedblock--principals--service_options))
 - `source` (String) Principal source. Defaults to `"UI"`.
 - `use_for_password_rotation` (Boolean) Use this principal for password rotation. Defaults to `false`.
 - `use_user_account` (Boolean) Use user account. Defaults to `false`.
 - `username_attribute` (String) Username attribute. Defaults to `""`.
+
+<a id="nestedblock--principals--command_restrictions"></a>
+### Nested Schema for `principals.command_restrictions`
+
+#### Optional
+
+- `allow_no_match` (Boolean) Allow commands that don't match any whitelist. Defaults to `false`.
+- `audit_match` (Boolean) Audit commands that match whitelists. Defaults to `false`.
+- `audit_no_match` (Boolean) Audit commands that don't match whitelists. Defaults to `false`.
+- `banner` (String) Banner message to display. Defaults to `""`.
+- `default_whitelist` (Block) Default whitelist (see [below for nested schema](#nestedblock--principals--command_restrictions--default_whitelist))
+- `enabled` (Boolean) Enable command restrictions. Defaults to `false`.
+- `rshell_variant` (String) Shell variant (e.g., bash, sh, powershell). Defaults to `""`.
+- `whitelists` (Block List) List of whitelists with roles (see [below for nested schema](#nestedblock--principals--command_restrictions--whitelists))
+
+<a id="nestedblock--principals--command_restrictions--default_whitelist"></a>
+### Nested Schema for `principals.command_restrictions.default_whitelist`
+
+#### Optional
+
+- `id` (String) Whitelist ID. Defaults to `""`.
+- `name` (String) Whitelist name. Defaults to `""`.
+
+<a id="nestedblock--principals--command_restrictions--whitelists"></a>
+### Nested Schema for `principals.command_restrictions.whitelists`
+
+#### Required
+
+- `whitelist` (Block) Whitelist reference (see [below for nested schema](#nestedblock--principals--command_restrictions--whitelists--whitelist))
+
+#### Optional
+
+- `roles` (Block List) Roles for this whitelist (see [below for nested schema](#nestedblock--principals--command_restrictions--whitelists--roles))
+
+<a id="nestedblock--principals--command_restrictions--whitelists--roles"></a>
+### Nested Schema for `principals.command_restrictions.whitelists.roles`
+
+#### Required
+
+- `id` (String) Role ID
+
+#### Optional
+
+- `name` (String) Role name
+
+<a id="nestedblock--principals--command_restrictions--whitelists--whitelist"></a>
+### Nested Schema for `principals.command_restrictions.whitelists.whitelist`
+
+#### Optional
+
+- `id` (String) Whitelist ID. Defaults to `""`.
+- `name` (String) Whitelist name. Defaults to `""`.
 
 <a id="nestedblock--principals--roles"></a>
 ### Nested Schema for `principals.roles`
@@ -137,6 +279,63 @@ resource "privx_host" "with_rotation" {
 #### Optional
 
 - `name` (String) Role name
+
+<a id="nestedblock--principals--service_options"></a>
+### Nested Schema for `principals.service_options`
+
+#### Optional
+
+- `db` (Block) Database service options (see [below for nested schema](#nestedblock--principals--service_options--db))
+- `rdp` (Block) RDP service options (see [below for nested schema](#nestedblock--principals--service_options--rdp))
+- `ssh` (Block) SSH service options (see [below for nested schema](#nestedblock--principals--service_options--ssh))
+- `vnc` (Block) VNC service options (see [below for nested schema](#nestedblock--principals--service_options--vnc))
+- `web` (Block) Web service options (see [below for nested schema](#nestedblock--principals--service_options--web))
+
+<a id="nestedblock--principals--service_options--db"></a>
+### Nested Schema for `principals.service_options.db`
+
+#### Optional
+
+- `max_bytes_download` (Number) Maximum bytes for download. Defaults to `0`.
+- `max_bytes_upload` (Number) Maximum bytes for upload. Defaults to `0`.
+
+<a id="nestedblock--principals--service_options--rdp"></a>
+### Nested Schema for `principals.service_options.rdp`
+
+#### Optional
+
+- `audio` (Boolean) Allow audio. Defaults to `false`.
+- `clipboard` (Boolean) Allow clipboard. Defaults to `false`.
+- `file_transfer` (Boolean) Allow file transfer. Defaults to `false`.
+
+<a id="nestedblock--principals--service_options--ssh"></a>
+### Nested Schema for `principals.service_options.ssh`
+
+#### Optional
+
+- `exec` (Boolean) Allow exec commands. Defaults to `true`.
+- `file_transfer` (Boolean) Allow file transfer. Defaults to `true`.
+- `other` (Boolean) Allow other SSH features. Defaults to `true`.
+- `shell` (Boolean) Allow shell access. Defaults to `true`.
+- `tunnels` (Boolean) Allow tunnels. Defaults to `true`.
+- `x11` (Boolean) Allow X11 forwarding. Defaults to `true`.
+
+<a id="nestedblock--principals--service_options--vnc"></a>
+### Nested Schema for `principals.service_options.vnc`
+
+#### Optional
+
+- `clipboard` (Boolean) Allow clipboard. Defaults to `false`.
+- `file_transfer` (Boolean) Allow file transfer. Defaults to `false`.
+
+<a id="nestedblock--principals--service_options--web"></a>
+### Nested Schema for `principals.service_options.web`
+
+#### Optional
+
+- `audio` (Boolean) Allow audio. Defaults to `false`.
+- `clipboard` (Boolean) Allow clipboard. Defaults to `false`.
+- `file_transfer` (Boolean) Allow file transfer. Defaults to `false`.
 
 <a id="nestedblock--services"></a>
 ### Nested Schema for `services`

@@ -94,6 +94,7 @@ type PrincipalModel struct {
 	Roles                  types.List   `tfsdk:"roles"`
 	Applications           types.List   `tfsdk:"applications"`
 	ServiceOptions         types.Object `tfsdk:"service_options"`
+	CommandRestrictions    types.Object `tfsdk:"command_restrictions"`
 }
 
 // RoleModel represents a role reference
@@ -156,8 +157,25 @@ type DBOptionsModel struct {
 // CommandRestrictionsModel represents command restrictions
 type CommandRestrictionsModel struct {
 	Enabled          types.Bool   `tfsdk:"enabled"`
+	RShellVariant    types.String `tfsdk:"rshell_variant"`
 	DefaultWhitelist types.Object `tfsdk:"default_whitelist"`
 	Whitelists       types.List   `tfsdk:"whitelists"`
+	AllowNoMatch     types.Bool   `tfsdk:"allow_no_match"`
+	AuditMatch       types.Bool   `tfsdk:"audit_match"`
+	AuditNoMatch     types.Bool   `tfsdk:"audit_no_match"`
+	Banner           types.String `tfsdk:"banner"`
+}
+
+// WhitelistGrantModel represents a whitelist grant
+type WhitelistGrantModel struct {
+	Whitelist types.Object `tfsdk:"whitelist"`
+	Roles     types.List   `tfsdk:"roles"`
+}
+
+// WhitelistHandleModel represents a whitelist handle
+type WhitelistHandleModel struct {
+	ID   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
 }
 
 // SessionRecordingOptionsModel represents session recording options
@@ -574,6 +592,113 @@ func (r *HostResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 								},
 							},
 						},
+						"command_restrictions": schema.SingleNestedAttribute{
+							MarkdownDescription: "Command restrictions for the principal",
+							Optional:            true,
+							Computed:            true,
+							Attributes: map[string]schema.Attribute{
+								"enabled": schema.BoolAttribute{
+									MarkdownDescription: "Enable command restrictions",
+									Optional:            true,
+									Computed:            true,
+									Default:             booldefault.StaticBool(false),
+								},
+								"rshell_variant": schema.StringAttribute{
+									MarkdownDescription: "Shell variant (e.g., bash, sh)",
+									Optional:            true,
+									Computed:            true,
+									Default:             stringdefault.StaticString(""),
+								},
+								"default_whitelist": schema.SingleNestedAttribute{
+									MarkdownDescription: "Default whitelist",
+									Optional:            true,
+									Computed:            true,
+									Attributes: map[string]schema.Attribute{
+										"id": schema.StringAttribute{
+											MarkdownDescription: "Whitelist ID",
+											Optional:            true,
+											Computed:            true,
+											Default:             stringdefault.StaticString(""),
+										},
+										"name": schema.StringAttribute{
+											MarkdownDescription: "Whitelist name",
+											Optional:            true,
+											Computed:            true,
+											Default:             stringdefault.StaticString(""),
+										},
+									},
+								},
+								"whitelists": schema.ListNestedAttribute{
+									MarkdownDescription: "List of whitelists with roles",
+									Optional:            true,
+									Computed:            true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"whitelist": schema.SingleNestedAttribute{
+												MarkdownDescription: "Whitelist reference",
+												Required:            true,
+												Attributes: map[string]schema.Attribute{
+													"id": schema.StringAttribute{
+														MarkdownDescription: "Whitelist ID",
+														Optional:            true,
+														Computed:            true,
+														Default:             stringdefault.StaticString(""),
+													},
+													"name": schema.StringAttribute{
+														MarkdownDescription: "Whitelist name",
+														Optional:            true,
+														Computed:            true,
+														Default:             stringdefault.StaticString(""),
+													},
+												},
+											},
+											"roles": schema.ListNestedAttribute{
+												MarkdownDescription: "Roles for this whitelist",
+												Optional:            true,
+												Computed:            true,
+												NestedObject: schema.NestedAttributeObject{
+													Attributes: map[string]schema.Attribute{
+														"id": schema.StringAttribute{
+															MarkdownDescription: "Role ID",
+															Required:            true,
+														},
+														"name": schema.StringAttribute{
+															MarkdownDescription: "Role name",
+															Optional:            true,
+															Computed:            true,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								"allow_no_match": schema.BoolAttribute{
+									MarkdownDescription: "Allow commands that don't match any whitelist",
+									Optional:            true,
+									Computed:            true,
+									Default:             booldefault.StaticBool(false),
+								},
+								"audit_match": schema.BoolAttribute{
+									MarkdownDescription: "Audit commands that match whitelists",
+									Optional:            true,
+									Computed:            true,
+									Default:             booldefault.StaticBool(false),
+								},
+								"audit_no_match": schema.BoolAttribute{
+									MarkdownDescription: "Audit commands that don't match whitelists",
+									Optional:            true,
+									Computed:            true,
+									Default:             booldefault.StaticBool(false),
+								},
+								"banner": schema.StringAttribute{
+									MarkdownDescription: "Banner message to display",
+									Optional:            true,
+									Computed:            true,
+									Default:             stringdefault.StaticString(""),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -793,6 +918,69 @@ func (r *HostResource) Create(ctx context.Context, req resource.CreateRequest, r
 			}
 
 			principal.ServiceOptions = serviceOptions
+		}
+
+		// Convert command restrictions
+		if !pm.CommandRestrictions.IsNull() && !pm.CommandRestrictions.IsUnknown() {
+			var commandRestrictionsModel CommandRestrictionsModel
+			pm.CommandRestrictions.As(ctx, &commandRestrictionsModel, basetypes.ObjectAsOptions{})
+			
+			commandRestrictions := hoststore.HostCommandRestrictions{
+				Enabled:       commandRestrictionsModel.Enabled.ValueBool(),
+				RShellVariant: commandRestrictionsModel.RShellVariant.ValueString(),
+				AllowNoMatch:  commandRestrictionsModel.AllowNoMatch.ValueBool(),
+				AuditMatch:    commandRestrictionsModel.AuditMatch.ValueBool(),
+				AuditNoMatch:  commandRestrictionsModel.AuditNoMatch.ValueBool(),
+				Banner:        commandRestrictionsModel.Banner.ValueString(),
+			}
+
+			// Convert default whitelist
+			if !commandRestrictionsModel.DefaultWhitelist.IsNull() && !commandRestrictionsModel.DefaultWhitelist.IsUnknown() {
+				var defaultWhitelistModel WhitelistHandleModel
+				commandRestrictionsModel.DefaultWhitelist.As(ctx, &defaultWhitelistModel, basetypes.ObjectAsOptions{})
+				commandRestrictions.DefaultWhiteList = hoststore.WhiteListHandle{
+					ID:   defaultWhitelistModel.ID.ValueString(),
+					Name: defaultWhitelistModel.Name.ValueString(),
+				}
+			}
+
+			// Convert whitelists
+			if !commandRestrictionsModel.Whitelists.IsNull() && !commandRestrictionsModel.Whitelists.IsUnknown() {
+				var whitelistGrantModels []WhitelistGrantModel
+				commandRestrictionsModel.Whitelists.ElementsAs(ctx, &whitelistGrantModels, false)
+				
+				for _, wgm := range whitelistGrantModels {
+					whitelistGrant := hoststore.WhiteListGrant{}
+					
+					// Convert whitelist handle
+					if !wgm.Whitelist.IsNull() && !wgm.Whitelist.IsUnknown() {
+						var whitelistHandleModel WhitelistHandleModel
+						wgm.Whitelist.As(ctx, &whitelistHandleModel, basetypes.ObjectAsOptions{})
+						whitelistGrant.WhiteList = hoststore.WhiteListHandle{
+							ID:   whitelistHandleModel.ID.ValueString(),
+							Name: whitelistHandleModel.Name.ValueString(),
+						}
+					}
+					
+					// Convert roles
+					if !wgm.Roles.IsNull() && !wgm.Roles.IsUnknown() {
+						var roleModels []RoleModel
+						wgm.Roles.ElementsAs(ctx, &roleModels, false)
+						
+						for _, rm := range roleModels {
+							role := hoststore.HostRole{
+								ID:   rm.ID.ValueString(),
+								Name: rm.Name.ValueString(),
+							}
+							whitelistGrant.Roles = append(whitelistGrant.Roles, role)
+						}
+					}
+					
+					commandRestrictions.WhiteLists = append(commandRestrictions.WhiteLists, whitelistGrant)
+				}
+			}
+
+			principal.CommandRestrictions = commandRestrictions
 		}
 
 		principals = append(principals, principal)
@@ -1110,6 +1298,69 @@ func (r *HostResource) Update(ctx context.Context, req resource.UpdateRequest, r
 			}
 
 			principal.ServiceOptions = serviceOptions
+		}
+
+		// Convert command restrictions
+		if !pm.CommandRestrictions.IsNull() && !pm.CommandRestrictions.IsUnknown() {
+			var commandRestrictionsModel CommandRestrictionsModel
+			pm.CommandRestrictions.As(ctx, &commandRestrictionsModel, basetypes.ObjectAsOptions{})
+			
+			commandRestrictions := hoststore.HostCommandRestrictions{
+				Enabled:       commandRestrictionsModel.Enabled.ValueBool(),
+				RShellVariant: commandRestrictionsModel.RShellVariant.ValueString(),
+				AllowNoMatch:  commandRestrictionsModel.AllowNoMatch.ValueBool(),
+				AuditMatch:    commandRestrictionsModel.AuditMatch.ValueBool(),
+				AuditNoMatch:  commandRestrictionsModel.AuditNoMatch.ValueBool(),
+				Banner:        commandRestrictionsModel.Banner.ValueString(),
+			}
+
+			// Convert default whitelist
+			if !commandRestrictionsModel.DefaultWhitelist.IsNull() && !commandRestrictionsModel.DefaultWhitelist.IsUnknown() {
+				var defaultWhitelistModel WhitelistHandleModel
+				commandRestrictionsModel.DefaultWhitelist.As(ctx, &defaultWhitelistModel, basetypes.ObjectAsOptions{})
+				commandRestrictions.DefaultWhiteList = hoststore.WhiteListHandle{
+					ID:   defaultWhitelistModel.ID.ValueString(),
+					Name: defaultWhitelistModel.Name.ValueString(),
+				}
+			}
+
+			// Convert whitelists
+			if !commandRestrictionsModel.Whitelists.IsNull() && !commandRestrictionsModel.Whitelists.IsUnknown() {
+				var whitelistGrantModels []WhitelistGrantModel
+				commandRestrictionsModel.Whitelists.ElementsAs(ctx, &whitelistGrantModels, false)
+				
+				for _, wgm := range whitelistGrantModels {
+					whitelistGrant := hoststore.WhiteListGrant{}
+					
+					// Convert whitelist handle
+					if !wgm.Whitelist.IsNull() && !wgm.Whitelist.IsUnknown() {
+						var whitelistHandleModel WhitelistHandleModel
+						wgm.Whitelist.As(ctx, &whitelistHandleModel, basetypes.ObjectAsOptions{})
+						whitelistGrant.WhiteList = hoststore.WhiteListHandle{
+							ID:   whitelistHandleModel.ID.ValueString(),
+							Name: whitelistHandleModel.Name.ValueString(),
+						}
+					}
+					
+					// Convert roles
+					if !wgm.Roles.IsNull() && !wgm.Roles.IsUnknown() {
+						var roleModels []RoleModel
+						wgm.Roles.ElementsAs(ctx, &roleModels, false)
+						
+						for _, rm := range roleModels {
+							role := hoststore.HostRole{
+								ID:   rm.ID.ValueString(),
+								Name: rm.Name.ValueString(),
+							}
+							whitelistGrant.Roles = append(whitelistGrant.Roles, role)
+						}
+					}
+					
+					commandRestrictions.WhiteLists = append(commandRestrictions.WhiteLists, whitelistGrant)
+				}
+			}
+
+			principal.CommandRestrictions = commandRestrictions
 		}
 
 		principals = append(principals, principal)
@@ -1503,6 +1754,134 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 			})
 		}
 
+		// Convert command restrictions for this principal
+		var commandRestrictionsValue types.Object
+		commandRestrictionsAttrs := map[string]attr.Value{
+			"enabled":       types.BoolValue(principal.CommandRestrictions.Enabled),
+			"rshell_variant": types.StringValue(principal.CommandRestrictions.RShellVariant),
+			"allow_no_match": types.BoolValue(principal.CommandRestrictions.AllowNoMatch),
+			"audit_match":    types.BoolValue(principal.CommandRestrictions.AuditMatch),
+			"audit_no_match": types.BoolValue(principal.CommandRestrictions.AuditNoMatch),
+			"banner":         types.StringValue(principal.CommandRestrictions.Banner),
+		}
+
+		// Convert default whitelist
+		defaultWhitelistAttrs := map[string]attr.Value{
+			"id":   types.StringValue(principal.CommandRestrictions.DefaultWhiteList.ID),
+			"name": types.StringValue(principal.CommandRestrictions.DefaultWhiteList.Name),
+		}
+		commandRestrictionsAttrs["default_whitelist"] = types.ObjectValueMust(map[string]attr.Type{
+			"id":   types.StringType,
+			"name": types.StringType,
+		}, defaultWhitelistAttrs)
+
+		// Convert whitelists
+		whitelistValues := make([]attr.Value, len(principal.CommandRestrictions.WhiteLists))
+		for j, whitelistGrant := range principal.CommandRestrictions.WhiteLists {
+			// Convert whitelist handle
+			whitelistHandleAttrs := map[string]attr.Value{
+				"id":   types.StringValue(whitelistGrant.WhiteList.ID),
+				"name": types.StringValue(whitelistGrant.WhiteList.Name),
+			}
+			
+			// Convert roles for this whitelist
+			whitelistRoleValues := make([]attr.Value, len(whitelistGrant.Roles))
+			for k, role := range whitelistGrant.Roles {
+				roleAttrs := map[string]attr.Value{
+					"id":   types.StringValue(role.ID),
+					"name": types.StringValue(role.Name),
+				}
+				whitelistRoleValues[k] = types.ObjectValueMust(map[string]attr.Type{
+					"id":   types.StringType,
+					"name": types.StringType,
+				}, roleAttrs)
+			}
+			
+			whitelistGrantAttrs := map[string]attr.Value{
+				"whitelist": types.ObjectValueMust(map[string]attr.Type{
+					"id":   types.StringType,
+					"name": types.StringType,
+				}, whitelistHandleAttrs),
+				"roles": types.ListValueMust(types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"id":   types.StringType,
+						"name": types.StringType,
+					},
+				}, whitelistRoleValues),
+			}
+			
+			whitelistValues[j] = types.ObjectValueMust(map[string]attr.Type{
+				"whitelist": types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"id":   types.StringType,
+						"name": types.StringType,
+					},
+				},
+				"roles": types.ListType{
+					ElemType: types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"id":   types.StringType,
+							"name": types.StringType,
+						},
+					},
+				},
+			}, whitelistGrantAttrs)
+		}
+		
+		commandRestrictionsAttrs["whitelists"] = types.ListValueMust(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"whitelist": types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"id":   types.StringType,
+						"name": types.StringType,
+					},
+				},
+				"roles": types.ListType{
+					ElemType: types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"id":   types.StringType,
+							"name": types.StringType,
+						},
+					},
+				},
+			},
+		}, whitelistValues)
+
+		commandRestrictionsValue = types.ObjectValueMust(map[string]attr.Type{
+			"enabled":            types.BoolType,
+			"rshell_variant":     types.StringType,
+			"allow_no_match":     types.BoolType,
+			"audit_match":        types.BoolType,
+			"audit_no_match":     types.BoolType,
+			"banner":             types.StringType,
+			"default_whitelist": types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"id":   types.StringType,
+					"name": types.StringType,
+				},
+			},
+			"whitelists": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"whitelist": types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"id":   types.StringType,
+								"name": types.StringType,
+							},
+						},
+						"roles": types.ListType{
+							ElemType: types.ObjectType{
+								AttrTypes: map[string]attr.Type{
+									"id":   types.StringType,
+									"name": types.StringType,
+								},
+							},
+						},
+					},
+				},
+			},
+		}, commandRestrictionsAttrs)
+
 		data.Principals[i] = PrincipalModel{
 			Principal:              types.StringValue(principal.Principal),
 			Passphrase:             passphraseValue, // Preserve original passphrase
@@ -1517,8 +1896,9 @@ func (r *HostResource) populateHostModel(ctx context.Context, data *HostResource
 					"name": types.StringType,
 				},
 			}, roleValues),
-			Applications:   types.ListValueMust(types.StringType, appValues),
-			ServiceOptions: serviceOptionsValue,
+			Applications:        types.ListValueMust(types.StringType, appValues),
+			ServiceOptions:      serviceOptionsValue,
+			CommandRestrictions: commandRestrictionsValue,
 		}
 	}
 

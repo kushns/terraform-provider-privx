@@ -105,3 +105,254 @@ resource "privx_host" "aws_ec2" {
 
   tags = ["aws", "ec2", "production"]
 }
+
+# Windows RDP host with comprehensive service options and command restrictions
+resource "privx_host" "windows_rdp_advanced" {
+  common_name     = "windows-server-01"
+  addresses       = ["192.168.1.200", "win01.example.com"]
+  source_id       = "a0ad72dc-b4aa-4a53-b7e0-14902b8b18bd"
+  access_group_id = "bfe74d8b-feda-46f1-7ac3-b37ef5b15e3b"
+  host_type       = "Windows Server"
+  audit_enabled   = true
+
+  services {
+    service = "RDP"
+    address = "192.168.1.200"
+    port    = 3389
+    source  = "UI"
+  }
+
+  services {
+    service = "SSH"
+    address = "192.168.1.200"
+    port    = 22
+    source  = "UI"
+  }
+
+  principals {
+    principal = "Administrator"
+    source    = "UI"
+    
+    roles {
+      id   = "windows-admin-role-id"
+      name = "Windows Admin"
+    }
+
+    # Configure service options for different protocols
+    service_options {
+      # SSH service options - restrictive for security
+      ssh {
+        shell         = true
+        file_transfer = false  # Disabled for security
+        exec          = true
+        tunnels       = false  # Disabled for security
+        x11           = false  # Not applicable for Windows
+        other         = false
+      }
+      
+      # RDP service options - allow multimedia features
+      rdp {
+        file_transfer = true
+        audio         = true
+        clipboard     = true
+      }
+      
+      # Web service options - moderate restrictions
+      web {
+        file_transfer = false
+        audio         = true
+        clipboard     = true
+      }
+      
+      # VNC service options - basic functionality
+      vnc {
+        file_transfer = false
+        clipboard     = true
+      }
+      
+      # Database service options - with upload/download limits
+      db {
+        max_bytes_upload   = 1048576   # 1MB
+        max_bytes_download = 10485760  # 10MB
+      }
+    }
+
+    # Configure command restrictions for PowerShell
+    command_restrictions {
+      enabled         = true
+      rshell_variant  = "powershell"
+      allow_no_match  = false
+      audit_match     = true
+      audit_no_match  = true
+      banner          = "WARNING: Authorized access only. All activities are monitored and logged."
+      
+      # Default whitelist for basic Windows commands
+      default_whitelist {
+        id   = "11c24354-e280-4fb2-791b-9f5c80dd2b01"
+        name = "windows_basic_commands"
+      }
+      
+      # Additional whitelists for admin users
+      whitelists {
+        whitelist {
+          id   = "7ea51435-59b9-4e6d-422d-4acec3173260"
+          name = "windows_admin_commands"
+        }
+        
+        roles {
+          id   = "65127d0a-b2df-403c-be19-e2960d10de4d"
+          name = "privx-admin"
+        }
+        
+        roles {
+          id   = "windows-admin-role-id"
+          name = "Windows Admin"
+        }
+      }
+      
+      # Database-specific commands for DB admins
+      whitelists {
+        whitelist {
+          id   = "db-commands-whitelist-id"
+          name = "database_commands"
+        }
+        
+        roles {
+          id   = "db-admin-role-id"
+          name = "Database Admin"
+        }
+      }
+    }
+  }
+
+  # Service account with different restrictions
+  principals {
+    principal = "svc_backup"
+    source    = "UI"
+    
+    roles {
+      id   = "backup-service-role-id"
+      name = "Backup Service"
+    }
+
+    # More restrictive service options for service accounts
+    service_options {
+      ssh {
+        shell         = false  # No interactive shell for service accounts
+        file_transfer = true   # Allow file operations
+        exec          = true   # Allow command execution
+        tunnels       = false
+        x11           = false
+        other         = false
+      }
+      
+      rdp {
+        file_transfer = true
+        audio         = false  # No audio for service accounts
+        clipboard     = false  # No clipboard for service accounts
+      }
+    }
+
+    # Strict command restrictions for service accounts
+    command_restrictions {
+      enabled         = true
+      rshell_variant  = "powershell"
+      allow_no_match  = false
+      audit_match     = true
+      audit_no_match  = true
+      banner          = "SERVICE ACCOUNT: Automated operations only."
+      
+      default_whitelist {
+        id   = "service-account-whitelist-id"
+        name = "service_account_commands"
+      }
+    }
+  }
+
+  session_recording_options {
+    disable_clipboard_recording     = false
+    disable_file_transfer_recording = false
+  }
+
+  tags = ["windows", "production", "rdp", "database"]
+}
+
+# Linux database server with database-specific service options
+resource "privx_host" "database_server" {
+  common_name     = "postgres-db-01"
+  addresses       = ["10.0.2.100"]
+  source_id       = "a0ad72dc-b4aa-4a53-b7e0-14902b8b18bd"
+  access_group_id = "bfe74d8b-feda-46f1-7ac3-b37ef5b15e3b"
+  host_type       = "Database Server"
+
+  services {
+    service = "SSH"
+    address = "10.0.2.100"
+    port    = 22
+    source  = "UI"
+  }
+
+  services {
+    service = "POSTGRESQL"
+    address = "10.0.2.100"
+    port    = 5432
+    source  = "UI"
+  }
+
+  principals {
+    principal = "postgres"
+    source    = "UI"
+    
+    roles {
+      id   = "db-admin-role-id"
+      name = "Database Admin"
+    }
+
+    # Database-focused service options
+    service_options {
+      ssh {
+        shell         = true
+        file_transfer = true
+        exec          = true
+        tunnels       = false
+        x11           = false
+        other         = false
+      }
+      
+      # Database service options with higher limits for DB operations
+      db {
+        max_bytes_upload   = 104857600  # 100MB for database imports
+        max_bytes_download = 1073741824 # 1GB for database exports
+      }
+    }
+
+    # Database-specific command restrictions
+    command_restrictions {
+      enabled         = true
+      rshell_variant  = "bash"
+      allow_no_match  = false
+      audit_match     = true
+      audit_no_match  = true
+      banner          = "DATABASE SERVER: Use approved database commands only."
+      
+      default_whitelist {
+        id   = "linux-basic-commands-id"
+        name = "linux_basic_commands"
+      }
+      
+      whitelists {
+        whitelist {
+          id   = "postgresql-commands-id"
+          name = "postgresql_admin_commands"
+        }
+        
+        roles {
+          id   = "db-admin-role-id"
+          name = "Database Admin"
+        }
+      }
+    }
+  }
+
+  tags = ["linux", "database", "postgresql", "production"]
+}

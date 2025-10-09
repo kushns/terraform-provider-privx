@@ -372,6 +372,88 @@ func (d *HostDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 								},
 							},
 						},
+						"command_restrictions": schema.SingleNestedAttribute{
+							MarkdownDescription: "Command restrictions for the principal",
+							Computed:            true,
+							Attributes: map[string]schema.Attribute{
+								"enabled": schema.BoolAttribute{
+									MarkdownDescription: "Enable command restrictions",
+									Computed:            true,
+								},
+								"rshell_variant": schema.StringAttribute{
+									MarkdownDescription: "Shell variant (e.g., bash, sh)",
+									Computed:            true,
+								},
+								"default_whitelist": schema.SingleNestedAttribute{
+									MarkdownDescription: "Default whitelist",
+									Computed:            true,
+									Attributes: map[string]schema.Attribute{
+										"id": schema.StringAttribute{
+											MarkdownDescription: "Whitelist ID",
+											Computed:            true,
+										},
+										"name": schema.StringAttribute{
+											MarkdownDescription: "Whitelist name",
+											Computed:            true,
+										},
+									},
+								},
+								"whitelists": schema.ListNestedAttribute{
+									MarkdownDescription: "List of whitelists with roles",
+									Computed:            true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"whitelist": schema.SingleNestedAttribute{
+												MarkdownDescription: "Whitelist reference",
+												Computed:            true,
+												Attributes: map[string]schema.Attribute{
+													"id": schema.StringAttribute{
+														MarkdownDescription: "Whitelist ID",
+														Computed:            true,
+													},
+													"name": schema.StringAttribute{
+														MarkdownDescription: "Whitelist name",
+														Computed:            true,
+													},
+												},
+											},
+											"roles": schema.ListNestedAttribute{
+												MarkdownDescription: "Roles for this whitelist",
+												Computed:            true,
+												NestedObject: schema.NestedAttributeObject{
+													Attributes: map[string]schema.Attribute{
+														"id": schema.StringAttribute{
+															MarkdownDescription: "Role ID",
+															Computed:            true,
+														},
+														"name": schema.StringAttribute{
+															MarkdownDescription: "Role name",
+															Computed:            true,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								"allow_no_match": schema.BoolAttribute{
+									MarkdownDescription: "Allow commands that don't match any whitelist",
+									Computed:            true,
+								},
+								"audit_match": schema.BoolAttribute{
+									MarkdownDescription: "Audit commands that match whitelists",
+									Computed:            true,
+								},
+								"audit_no_match": schema.BoolAttribute{
+									MarkdownDescription: "Audit commands that don't match whitelists",
+									Computed:            true,
+								},
+								"banner": schema.StringAttribute{
+									MarkdownDescription: "Banner message to display",
+									Computed:            true,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -868,6 +950,135 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 			"applications":    types.ListValueMust(types.StringType, appValues),
 			"service_options": serviceOptionsValue,
 		}
+
+		// Convert command restrictions for this principal
+		commandRestrictionsAttrs := map[string]attr.Value{
+			"enabled":        types.BoolValue(principal.CommandRestrictions.Enabled),
+			"rshell_variant": types.StringValue(principal.CommandRestrictions.RShellVariant),
+			"allow_no_match": types.BoolValue(principal.CommandRestrictions.AllowNoMatch),
+			"audit_match":    types.BoolValue(principal.CommandRestrictions.AuditMatch),
+			"audit_no_match": types.BoolValue(principal.CommandRestrictions.AuditNoMatch),
+			"banner":         types.StringValue(principal.CommandRestrictions.Banner),
+		}
+
+		// Convert default whitelist
+		defaultWhitelistAttrs := map[string]attr.Value{
+			"id":   types.StringValue(principal.CommandRestrictions.DefaultWhiteList.ID),
+			"name": types.StringValue(principal.CommandRestrictions.DefaultWhiteList.Name),
+		}
+		commandRestrictionsAttrs["default_whitelist"] = types.ObjectValueMust(map[string]attr.Type{
+			"id":   types.StringType,
+			"name": types.StringType,
+		}, defaultWhitelistAttrs)
+
+		// Convert whitelists
+		whitelistValues := make([]attr.Value, len(principal.CommandRestrictions.WhiteLists))
+		for j, whitelistGrant := range principal.CommandRestrictions.WhiteLists {
+			// Convert whitelist handle
+			whitelistHandleAttrs := map[string]attr.Value{
+				"id":   types.StringValue(whitelistGrant.WhiteList.ID),
+				"name": types.StringValue(whitelistGrant.WhiteList.Name),
+			}
+			
+			// Convert roles for this whitelist
+			whitelistRoleValues := make([]attr.Value, len(whitelistGrant.Roles))
+			for k, role := range whitelistGrant.Roles {
+				roleAttrs := map[string]attr.Value{
+					"id":   types.StringValue(role.ID),
+					"name": types.StringValue(role.Name),
+				}
+				whitelistRoleValues[k] = types.ObjectValueMust(map[string]attr.Type{
+					"id":   types.StringType,
+					"name": types.StringType,
+				}, roleAttrs)
+			}
+			
+			whitelistGrantAttrs := map[string]attr.Value{
+				"whitelist": types.ObjectValueMust(map[string]attr.Type{
+					"id":   types.StringType,
+					"name": types.StringType,
+				}, whitelistHandleAttrs),
+				"roles": types.ListValueMust(types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"id":   types.StringType,
+						"name": types.StringType,
+					},
+				}, whitelistRoleValues),
+			}
+			
+			whitelistValues[j] = types.ObjectValueMust(map[string]attr.Type{
+				"whitelist": types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"id":   types.StringType,
+						"name": types.StringType,
+					},
+				},
+				"roles": types.ListType{
+					ElemType: types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"id":   types.StringType,
+							"name": types.StringType,
+						},
+					},
+				},
+			}, whitelistGrantAttrs)
+		}
+		
+		commandRestrictionsAttrs["whitelists"] = types.ListValueMust(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"whitelist": types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"id":   types.StringType,
+						"name": types.StringType,
+					},
+				},
+				"roles": types.ListType{
+					ElemType: types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"id":   types.StringType,
+							"name": types.StringType,
+						},
+					},
+				},
+			},
+		}, whitelistValues)
+
+		commandRestrictionsValue := types.ObjectValueMust(map[string]attr.Type{
+			"enabled":            types.BoolType,
+			"rshell_variant":     types.StringType,
+			"allow_no_match":     types.BoolType,
+			"audit_match":        types.BoolType,
+			"audit_no_match":     types.BoolType,
+			"banner":             types.StringType,
+			"default_whitelist": types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"id":   types.StringType,
+					"name": types.StringType,
+				},
+			},
+			"whitelists": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"whitelist": types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"id":   types.StringType,
+								"name": types.StringType,
+							},
+						},
+						"roles": types.ListType{
+							ElemType: types.ObjectType{
+								AttrTypes: map[string]attr.Type{
+									"id":   types.StringType,
+									"name": types.StringType,
+								},
+							},
+						},
+					},
+				},
+			},
+		}, commandRestrictionsAttrs)
+
+		principalAttrs["command_restrictions"] = commandRestrictionsValue
 		principalValues[i] = types.ObjectValueMust(map[string]attr.Type{
 			"principal":                 types.StringType,
 			"passphrase":                types.StringType,
@@ -921,6 +1132,42 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 						AttrTypes: map[string]attr.Type{
 							"max_bytes_upload":   types.Int64Type,
 							"max_bytes_download": types.Int64Type,
+						},
+					},
+				},
+			},
+			"command_restrictions": types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"enabled":            types.BoolType,
+					"rshell_variant":     types.StringType,
+					"allow_no_match":     types.BoolType,
+					"audit_match":        types.BoolType,
+					"audit_no_match":     types.BoolType,
+					"banner":             types.StringType,
+					"default_whitelist": types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"id":   types.StringType,
+							"name": types.StringType,
+						},
+					},
+					"whitelists": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"whitelist": types.ObjectType{
+									AttrTypes: map[string]attr.Type{
+										"id":   types.StringType,
+										"name": types.StringType,
+									},
+								},
+								"roles": types.ListType{
+									ElemType: types.ObjectType{
+										AttrTypes: map[string]attr.Type{
+											"id":   types.StringType,
+											"name": types.StringType,
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -981,6 +1228,42 @@ func (d *HostDataSource) populateHostDataSourceModel(ctx context.Context, data *
 						AttrTypes: map[string]attr.Type{
 							"max_bytes_upload":   types.Int64Type,
 							"max_bytes_download": types.Int64Type,
+						},
+					},
+				},
+			},
+			"command_restrictions": types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"enabled":            types.BoolType,
+					"rshell_variant":     types.StringType,
+					"allow_no_match":     types.BoolType,
+					"audit_match":        types.BoolType,
+					"audit_no_match":     types.BoolType,
+					"banner":             types.StringType,
+					"default_whitelist": types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"id":   types.StringType,
+							"name": types.StringType,
+						},
+					},
+					"whitelists": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"whitelist": types.ObjectType{
+									AttrTypes: map[string]attr.Type{
+										"id":   types.StringType,
+										"name": types.StringType,
+									},
+								},
+								"roles": types.ListType{
+									ElemType: types.ObjectType{
+										AttrTypes: map[string]attr.Type{
+											"id":   types.StringType,
+											"name": types.StringType,
+										},
+									},
+								},
+							},
 						},
 					},
 				},
