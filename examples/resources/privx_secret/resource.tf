@@ -47,6 +47,7 @@ resource "privx_secret" "database_config" {
   }
 }
 
+
 # SSL/TLS certificates secret
 resource "privx_secret" "ssl_certificates" {
   name     = "web-server-certificates"
