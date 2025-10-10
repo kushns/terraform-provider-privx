@@ -47,34 +47,6 @@ resource "privx_secret" "database_config" {
   }
 }
 
-# API keys and tokens secret
-resource "privx_secret" "external_apis" {
-  name = "external-service-keys"
-  
-  data = {
-    github_token      = "ghp_1234567890abcdef1234567890abcdef12345678"
-    aws_access_key_id = "AKIAIOSFODNN7EXAMPLE"
-    aws_secret_key    = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-    datadog_api_key   = "1234567890abcdef1234567890abcdef"
-    stripe_secret_key = "sk_test_1234567890abcdef1234567890abcdef12345678"
-  }
-
-  read_roles {
-    id   = "ci-cd-role-id"
-    name = "CI/CD Pipeline"
-  }
-
-  read_roles {
-    id   = "monitoring-role-id"
-    name = "Monitoring Team"
-  }
-
-  write_roles {
-    id   = "devops-role-id"
-    name = "DevOps Team"
-  }
-}
-
 # SSL/TLS certificates secret
 resource "privx_secret" "ssl_certificates" {
   name     = "web-server-certificates"
