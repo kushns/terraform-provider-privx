@@ -53,7 +53,6 @@ resource "privx_secret" "external_apis" {
   
   data = {
     github_token      = "ghp_1234567890abcdef1234567890abcdef12345678"
-    slack_webhook_url = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
     aws_access_key_id = "AKIAIOSFODNN7EXAMPLE"
     aws_secret_key    = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
     datadog_api_key   = "1234567890abcdef1234567890abcdef"

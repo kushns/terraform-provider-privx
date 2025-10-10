@@ -169,7 +169,7 @@ func (r *SecretResource) Create(ctx context.Context, req resource.CreateRequest,
 	if !data.ReadRoles.IsNull() && !data.ReadRoles.IsUnknown() {
 		var readRoleModels []RoleHandleModel
 		data.ReadRoles.ElementsAs(ctx, &readRoleModels, false)
-		
+
 		for _, rm := range readRoleModels {
 			role := rolestore.RoleHandle{
 				ID:   rm.ID.ValueString(),
@@ -184,7 +184,7 @@ func (r *SecretResource) Create(ctx context.Context, req resource.CreateRequest,
 	if !data.WriteRoles.IsNull() && !data.WriteRoles.IsUnknown() {
 		var writeRoleModels []RoleHandleModel
 		data.WriteRoles.ElementsAs(ctx, &writeRoleModels, false)
-		
+
 		for _, rm := range writeRoleModels {
 			role := rolestore.RoleHandle{
 				ID:   rm.ID.ValueString(),
@@ -199,7 +199,7 @@ func (r *SecretResource) Create(ctx context.Context, req resource.CreateRequest,
 	if !data.Data.IsNull() && !data.Data.IsUnknown() {
 		dataMap := make(map[string]string)
 		data.Data.ElementsAs(ctx, &dataMap, false)
-		
+
 		// Convert to interface{} map
 		interfaceMap := make(map[string]interface{})
 		for k, v := range dataMap {
@@ -301,7 +301,7 @@ func (r *SecretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if !data.ReadRoles.IsNull() && !data.ReadRoles.IsUnknown() {
 		var readRoleModels []RoleHandleModel
 		data.ReadRoles.ElementsAs(ctx, &readRoleModels, false)
-		
+
 		for _, rm := range readRoleModels {
 			role := rolestore.RoleHandle{
 				ID:   rm.ID.ValueString(),
@@ -316,7 +316,7 @@ func (r *SecretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if !data.WriteRoles.IsNull() && !data.WriteRoles.IsUnknown() {
 		var writeRoleModels []RoleHandleModel
 		data.WriteRoles.ElementsAs(ctx, &writeRoleModels, false)
-		
+
 		for _, rm := range writeRoleModels {
 			role := rolestore.RoleHandle{
 				ID:   rm.ID.ValueString(),
@@ -331,7 +331,7 @@ func (r *SecretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if !data.Data.IsNull() && !data.Data.IsUnknown() {
 		dataMap := make(map[string]string)
 		data.Data.ElementsAs(ctx, &dataMap, false)
-		
+
 		// Convert to interface{} map
 		interfaceMap := make(map[string]interface{})
 		for k, v := range dataMap {
@@ -407,7 +407,6 @@ func (r *SecretResource) ImportState(ctx context.Context, req resource.ImportSta
 	resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
 }
 
-
 // populateSecretModel populates the Terraform model from the API response
 func (r *SecretResource) populateSecretModel(ctx context.Context, data *SecretResourceModel, secret *vault.Secret) {
 	data.Name = types.StringValue(secret.Name)
@@ -475,14 +474,14 @@ func (r *SecretResource) populateSecretModel(ctx context.Context, data *SecretRe
 
 // Helper function to check if a string contains a substring (case-insensitive)
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || 
-		func() bool {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+			func() bool {
+				for i := 0; i <= len(s)-len(substr); i++ {
+					if s[i:i+len(substr)] == substr {
+						return true
+					}
 				}
-			}
-			return false
-		}())))
+				return false
+			}())))
 }
