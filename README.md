@@ -2,7 +2,7 @@
 
 # Terraform Provider PrivX (WIP)
 
-This repository is an unofficial terraform provider for PrivX
+This repository is an unofficial terraform provider for PrivX.
 It uses v2 [privx-sdk-go](https://github.com/SSHcom/privx-sdk-go).
 
 ## Supported Resources
