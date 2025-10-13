@@ -285,13 +285,13 @@ func (p *privxProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *privxProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAccessGroupResource,
+		NewAPIClientResource,
 		NewExtenderResource,
 		NewCarrierResource,
 		NewHostResource,
 		NewRoleResource,
 		NewSecretResource,
 		//NewSourceResource,
-		//NewAPIClientResource,
 		NewWorkflowResource,
 		NewWhitelistResource,
 	}
@@ -300,7 +300,7 @@ func (p *privxProvider) Resources(ctx context.Context) []func() resource.Resourc
 func (p *privxProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewAccessGroupDataSource,
-		//NewAPIClientDataSource,
+		NewAPIClientDataSource,
 		NewCarrierConfigDataSource,
 		NewExtenderDataSource,
 		NewExtenderConfigDataSource,
