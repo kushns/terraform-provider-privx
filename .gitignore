@@ -28,6 +28,7 @@ website/node_modules
 *.envrc
 vendor
 .vscode/
+privx-sdk-go/
 
 website/vendor
 
